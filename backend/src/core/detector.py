@@ -1,17 +1,3 @@
-"""
-Módulo de detección de uniformes SENATI.
-
-Proporciona una interfaz simple para cargar el modelo entrenado
-y realizar detecciones en imágenes.
-
-Ejemplo de uso:
-    from src.core.detector import UniformDetector
-    
-    detector = UniformDetector()
-    detections = detector.detect("imagen.jpg")
-    print(f"Se detectaron {len(detections)} uniformes")
-"""
-
 from ultralytics import YOLO
 import cv2
 import numpy as np
@@ -62,26 +48,7 @@ class UniformDetector:
         image_source: Union[str, np.ndarray],
         conf: float = None
     ) -> List[Dict]:
-        """
-        Detecta uniformes en una imagen
-        
-        Args:
-            image_source: Ruta a imagen o array numpy (BGR)
-            conf: Umbral de confianza (si no se especifica, usa el default)
-            
-        Returns:
-            Lista de diccionarios con detecciones:
-            [
-                {
-                    'class': 'uniforme_senati',
-                    'confidence': 0.85,
-                    'bbox': [x1, y1, x2, y2],
-                    'bbox_center': [x_center, y_center],
-                    'bbox_size': [width, height]
-                },
-                ...
-            ]
-        """
+
         if conf is None:
             conf = self.conf_threshold
         
@@ -131,17 +98,7 @@ class UniformDetector:
         conf: float = None,
         save_path: str = None
     ) -> np.ndarray:
-        """
-        Detecta uniformes y dibuja bounding boxes en la imagen
-        
-        Args:
-            image_path: Ruta a la imagen
-            conf: Umbral de confianza
-            save_path: Ruta para guardar la imagen (opcional)
-            
-        Returns:
-            Imagen con bounding boxes dibujados (numpy array BGR)
-        """
+
         # Leer imagen
         img = cv2.imread(str(image_path))
         if img is None:
@@ -206,16 +163,7 @@ class UniformDetector:
         image_path: str,
         conf: float = None
     ) -> Dict:
-        """
-        Retorna un resumen JSON-friendly de las detecciones
-        
-        Args:
-            image_path: Ruta a la imagen
-            conf: Umbral de confianza
-            
-        Returns:
-            Diccionario con resumen de detecciones
-        """
+
         detections = self.detect_image(image_path, conf)
         
         summary = {
@@ -234,17 +182,7 @@ class UniformDetector:
         output_dir: str = None,
         conf: float = None
     ) -> List[Dict]:
-        """
-        Detecta uniformes en múltiples imágenes de una carpeta
-        
-        Args:
-            image_dir: Carpeta con imágenes
-            output_dir: Carpeta para guardar resultados (opcional)
-            conf: Umbral de confianza
-            
-        Returns:
-            Lista con resúmenes de detección para cada imagen
-        """
+
         image_dir = Path(image_dir)
         
         # Obtener todas las imágenes
@@ -290,12 +228,7 @@ class UniformDetector:
         return results
     
     def change_confidence_threshold(self, new_threshold: float):
-        """
-        Cambia el umbral de confianza
-        
-        Args:
-            new_threshold: Nuevo umbral (0-1)
-        """
+
         if not 0 <= new_threshold <= 1:
             raise ValueError("El umbral debe estar entre 0 y 1")
         
@@ -308,9 +241,7 @@ class UniformDetector:
 # ==========================================
 
 def test_detector():
-    """
-    Script de prueba para verificar que el detector funciona
-    """
+
     print("="*60)
     print("   PRUEBA DEL DETECTOR DE UNIFORMES")
     print("="*60)

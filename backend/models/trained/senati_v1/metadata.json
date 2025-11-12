@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-11-12T01:29:21.528112",
+  "timestamp": "2025-11-12T05:33:15.433618",
   "config": {
     "model": "yolov8s.pt",
     "data": "configs/senati_dataset.yaml",
@@ -22,8 +22,8 @@
     "classes": 1
   },
   "paths": {
-    "best_model": "C:\\Users\\Mandarina\\Documents\\Instituto\\senati-uniform-detector\\models\\trained\\senati_v1\\weights\\best.pt",
-    "last_model": "C:\\Users\\Mandarina\\Documents\\Instituto\\senati-uniform-detector\\models\\trained\\senati_v1\\weights\\last.pt",
-    "results": "C:\\Users\\Mandarina\\Documents\\Instituto\\senati-uniform-detector\\models\\trained\\senati_v1\\results.png"
+    "best_model": "C:\\Users\\Mandarina\\Documents\\Instituto\\senati-uniform-detector\\backend\\models\\trained\\senati_v1\\weights\\best.pt",
+    "last_model": "C:\\Users\\Mandarina\\Documents\\Instituto\\senati-uniform-detector\\backend\\models\\trained\\senati_v1\\weights\\last.pt",
+    "results": "C:\\Users\\Mandarina\\Documents\\Instituto\\senati-uniform-detector\\backend\\models\\trained\\senati_v1\\results.png"
   }
 }

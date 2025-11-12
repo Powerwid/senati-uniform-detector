@@ -10,16 +10,6 @@ def split_dataset(
     test_ratio=0.1,
     seed=42
 ):
-    """
-    Divide el dataset etiquetado en train, val y test
-    
-    Args:
-        source_dir: Carpeta con imágenes etiquetadas
-        train_ratio: Porcentaje para entrenamiento (0.7 = 70%)
-        val_ratio: Porcentaje para validación (0.2 = 20%)
-        test_ratio: Porcentaje para test (0.1 = 10%)
-        seed: Semilla para reproducibilidad
-    """
     # Validar que las proporciones suman 1
     assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 0.001, \
         "Las proporciones deben sumar 1.0"

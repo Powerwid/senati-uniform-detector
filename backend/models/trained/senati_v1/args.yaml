@@ -103,4 +103,4 @@ auto_augment: randaugment
 erasing: 0.4
 cfg: null
 tracker: botsort.yaml
-save_dir: C:\Users\Mandarina\Documents\Instituto\senati-uniform-detector\models\trained\senati_v1
+save_dir: C:\Users\Mandarina\Documents\Instituto\senati-uniform-detector\backend\models\trained\senati_v1

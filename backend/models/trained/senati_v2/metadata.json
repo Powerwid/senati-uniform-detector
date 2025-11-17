@@ -1,0 +1,29 @@
+{
+  "timestamp": "2025-11-16T23:16:27.428931",
+  "config": {
+    "model": "yolov8s.pt",
+    "data": "configs/senati_dataset.yaml",
+    "epochs": 50,
+    "batch": 8,
+    "imgsz": 640,
+    "patience": 10,
+    "device": "cpu",
+    "project": "models/trained",
+    "name": "senati_v2",
+    "exist_ok": true,
+    "pretrained": true,
+    "verbose": true,
+    "save": true,
+    "plots": true
+  },
+  "dataset": {
+    "train_images": 34,
+    "val_images": 9,
+    "classes": 1
+  },
+  "paths": {
+    "best_model": "C:\\Users\\Mandarina\\Documents\\Instituto\\senati-uniform-detector\\backend\\models\\trained\\senati_v2\\weights\\best.pt",
+    "last_model": "C:\\Users\\Mandarina\\Documents\\Instituto\\senati-uniform-detector\\backend\\models\\trained\\senati_v2\\weights\\last.pt",
+    "results": "C:\\Users\\Mandarina\\Documents\\Instituto\\senati-uniform-detector\\backend\\models\\trained\\senati_v2\\results.png"
+  }
+}

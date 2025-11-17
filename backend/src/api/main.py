@@ -5,16 +5,12 @@ import cv2
 import io
 from pathlib import Path
 import sys
+import numpy as np
 
-# Agregar ruta para importar módulos
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.core.detector import UniformDetector
 from src.preprocessing.image_processor import ImageProcessor
-
-# ==========================================
-# INICIALIZACIÓN
-# ==========================================
 
 app = FastAPI(
     title="SENATI Uniform Detector API",
@@ -24,38 +20,35 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS para frontend React
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción: especifica tu dominio
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Cargar modelo al iniciar
-print("🚀 Iniciando API...")
+
+TEMP_DIR = Path("tmp")
+TEMP_DIR.mkdir(exist_ok=True)
+
+print(" Iniciando API...")
 
 try:
     detector = UniformDetector(
-        model_path="models/trained/senati_v1/weights/best.pt",
+        model_path="models/trained/senati_v2/weights/best.pt",
         conf_threshold=0.25
     )
     processor = ImageProcessor()
-    print("✅ Modelo cargado\n")
+    print(" Modelo cargado\n")
 except Exception as e:
-    print(f"⚠️  Advertencia: {e}")
-    print("   El modelo se cargará cuando esté disponible\n")
+    print(f" Advertencia al cargar modelo: {e}")
     detector = None
     processor = ImageProcessor()
 
-# ==========================================
-# ENDPOINTS
-# ==========================================
 
 @app.get("/")
 def root():
-    """Endpoint raíz"""
     return {
         "name": "SENATI Uniform Detector API",
         "version": "1.0.0",
@@ -66,6 +59,8 @@ def root():
             "stats": "/api/stats",
             "detect": "/api/detect",
             "visualize": "/api/detect/visualize",
+            "detect_video": "/api/detect/video",
+            "live_frame": "/api/detect/live-frame",
             "analyze": "/api/analyze"
         }
     }
@@ -73,9 +68,6 @@ def root():
 
 @app.get("/api/health")
 def health_check():
-    """
-    Verifica estado de la API y del modelo
-    """
     if detector is None:
         return JSONResponse(
             status_code=503,
@@ -83,7 +75,6 @@ def health_check():
                 "status": "unhealthy",
                 "message": "Modelo no cargado",
                 "model_loaded": False,
-                "suggestion": "Entrena el modelo: python src/training/train_model.py"
             }
         )
     
@@ -98,14 +89,8 @@ def health_check():
 
 @app.get("/api/stats")
 def get_model_stats():
-    """
-    Obtiene información del modelo
-    """
     if detector is None:
-        raise HTTPException(
-            status_code=503, 
-            detail="Modelo no disponible. Entrena primero el modelo."
-        )
+        raise HTTPException(status_code=503, detail="Modelo no disponible")
     
     stats = {
         "model_name": "YOLOv8s",
@@ -116,188 +101,186 @@ def get_model_stats():
         "input_size": "640x640"
     }
     
-    # Agregar metadata si existe
     metadata_file = detector.model_path.parent.parent / "metadata.json"
     if metadata_file.exists():
         import json
-        with open(metadata_file, 'r') as f:
-            metadata = json.load(f)
-            stats["training_info"] = metadata
-    
-    return stats
+        with open(metadata_file, "r") as f:
+            stats["training_info"] = json.load(f)
 
+    return stats
 
 @app.post("/api/detect")
 async def detect_uniform(
     file: UploadFile = File(...),
-    confidence: float = Query(0.25, ge=0.0, le=1.0)
+    confidence: float = Query(0.25, ge=0, le=1)
 ):
-    """
-    Detecta uniformes en una imagen
-    
-    Returns:
-        JSON con detecciones
-    """
     if detector is None:
         raise HTTPException(status_code=503, detail="Modelo no cargado")
     
     if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Archivo debe ser una imagen")
-    
-    try:
-        # Leer y validar
-        contents = await file.read()
-        if not processor.validate_image(contents):
-            raise HTTPException(status_code=400, detail="Imagen inválida o corrupta")
-        
-        # Guardar temporalmente
-        temp_path = f"/tmp/{file.filename}"
-        with open(temp_path, "wb") as f:
-            f.write(contents)
-        
-        # Detectar
-        detections = detector.detect_image(temp_path, conf=confidence)
-        
-        # Limpiar
-        Path(temp_path).unlink(missing_ok=True)
-        
-        # Respuesta
-        return {
-            "filename": file.filename,
-            "confidence_threshold": confidence,
-            "detections_count": len(detections),
-            "detections": detections
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail="Debe enviar una imagen")
 
+    contents = await file.read()
+    if not processor.validate_image(contents):
+        raise HTTPException(status_code=400, detail="Imagen inválida")
+
+    temp_path = TEMP_DIR / file.filename
+    with open(temp_path, "wb") as f:
+        f.write(contents)
+
+    detections = detector.detect_image(str(temp_path), conf=confidence)
+
+    temp_path.unlink(missing_ok=True)
+
+    return {
+        "filename": file.filename,
+        "detections_count": len(detections),
+        "detections": detections
+    }
 
 @app.post("/api/detect/visualize")
 async def detect_and_visualize(
     file: UploadFile = File(...),
-    confidence: float = Query(0.25, ge=0.0, le=1.0)
+    confidence: float = Query(0.25, ge=0, le=1)
 ):
-    """
-    Detecta uniformes y retorna imagen con bounding boxes
-    """
+    if detector is None:
+        raise HTTPException(status_code=503, detail="Modelo no cargado")
+
+    contents = await file.read()
+    if not processor.validate_image(contents):
+        raise HTTPException(status_code=400, detail="Imagen inválida")
+
+    temp_path = TEMP_DIR / file.filename
+    with open(temp_path, "wb") as f:
+        f.write(contents)
+
+    img_with_boxes = detector.detect_and_draw(str(temp_path), conf=confidence)
+    temp_path.unlink(missing_ok=True)
+
+    img_bytes = processor.opencv_to_bytes(img_with_boxes)
+
+    return StreamingResponse(
+        io.BytesIO(img_bytes),
+        media_type="image/jpeg",
+        headers={"Content-Disposition": f"inline; filename=detected_{file.filename}"}
+    )
+
+@app.post("/api/detect/video")
+async def detect_video(
+    file: UploadFile = File(...),
+    confidence: float = Query(0.25, ge=0, le=1)
+):
     if detector is None:
         raise HTTPException(status_code=503, detail="Modelo no cargado")
     
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Archivo debe ser una imagen")
-    
-    try:
-        # Leer y validar
-        contents = await file.read()
-        if not processor.validate_image(contents):
-            raise HTTPException(status_code=400, detail="Imagen inválida")
-        
-        # Guardar temporalmente
-        temp_path = f"/tmp/{file.filename}"
-        with open(temp_path, "wb") as f:
-            f.write(contents)
-        
-        # Detectar y dibujar
-        img_with_boxes = detector.detect_and_draw(temp_path, conf=confidence)
-        
-        # Limpiar
-        Path(temp_path).unlink(missing_ok=True)
-        
-        # Convertir a bytes
-        img_bytes = processor.opencv_to_bytes(img_with_boxes, '.jpg')
-        
-        # Retornar imagen
-        return StreamingResponse(
-            io.BytesIO(img_bytes),
-            media_type="image/jpeg",
-            headers={"Content-Disposition": f"inline; filename=detected_{file.filename}"}
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    if not file.content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="Debe enviar video")
 
+    temp_video = TEMP_DIR / file.filename
+    with open(temp_video, "wb") as f:
+        f.write(await file.read())
+
+    cap = cv2.VideoCapture(str(temp_video))
+    if not cap.isOpened():
+        raise HTTPException(status_code=400, detail="No se pudo procesar el video")
+
+    results = []
+    frame_count = 0
+    total_detections = 0
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        
+        frame_count += 1
+        frame_path = TEMP_DIR / f"frame_{frame_count}.jpg"
+        cv2.imwrite(str(frame_path), frame)
+
+        detections = detector.detect_image(str(frame_path), conf=confidence)
+        total_detections += len(detections)
+
+        results.append({
+            "frame": frame_count,
+            "detections": detections
+        })
+
+        frame_path.unlink(missing_ok=True)
+
+    cap.release()
+    temp_video.unlink(missing_ok=True)
+
+    return {
+        "frames_processed": frame_count,
+        "total_detections": total_detections,
+        "results": results
+    }
+
+@app.post("/api/detect/live-frame")
+async def detect_live_frame(
+    file: UploadFile = File(...),
+    confidence: float = Query(0.25, ge=0, le=1)
+):
+    if detector is None:
+        raise HTTPException(status_code=503, detail="Modelo no cargado")
+
+    content = await file.read()
+    if not processor.validate_image(content):
+        raise HTTPException(status_code=400, detail="Frame inválido")
+
+    temp_path = TEMP_DIR / file.filename
+    with open(temp_path, "wb") as f:
+        f.write(content)
+
+    detections = detector.detect_image(str(temp_path), conf=confidence)
+    temp_path.unlink(missing_ok=True)
+
+    return {
+        "detections_count": len(detections),
+        "detections": detections
+    }
 
 @app.post("/api/analyze")
 async def analyze_image(file: UploadFile = File(...)):
-    """
-    Analiza calidad de imagen sin detectar
-    """
-    try:
-        contents = await file.read()
-        
-        if not processor.validate_image(contents):
-            raise HTTPException(status_code=400, detail="Imagen inválida")
-        
-        # Guardar temporalmente
-        temp_path = f"/tmp/{file.filename}"
-        with open(temp_path, "wb") as f:
-            f.write(contents)
-        
-        # Analizar
-        info = processor.get_image_info(temp_path)
-        quality = processor.check_image_quality(temp_path)
-        
-        # Limpiar
-        Path(temp_path).unlink(missing_ok=True)
-        
-        return {
-            "filename": file.filename,
-            "image_info": info,
-            "quality_metrics": quality,
-            "recommendation": (
-                "Imagen adecuada para detección" 
-                if quality['overall_quality'] == "aceptable" 
-                else "Considere usar una imagen de mejor calidad"
-            )
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    contents = await file.read()
 
+    if not processor.validate_image(contents):
+        raise HTTPException(status_code=400, detail="Imagen inválida")
 
-@app.post("/api/confidence/set")
-def set_confidence_threshold(threshold: float = Query(..., ge=0.0, le=1.0)):
-    """
-    Cambia el umbral de confianza
-    """
-    if detector is None:
-        raise HTTPException(status_code=503, detail="Modelo no cargado")
-    
-    detector.change_confidence_threshold(threshold)
-    
+    temp_path = TEMP_DIR / file.filename
+    with open(temp_path, "wb") as f:
+        f.write(contents)
+
+    info = processor.get_image_info(str(temp_path))
+    quality = processor.check_image_quality(str(temp_path))
+
+    temp_path.unlink(missing_ok=True)
+
     return {
-        "message": "Umbral actualizado",
-        "new_threshold": threshold
+        "filename": file.filename,
+        "image_info": info,
+        "quality_metrics": quality
     }
 
+@app.post("/api/confidence/set")
+def set_confidence_threshold(threshold: float = Query(..., ge=0, le=1)):
+    if detector is None:
+        raise HTTPException(status_code=503, detail="Modelo no cargado")
 
-# ==========================================
-# EVENTOS
-# ==========================================
+    detector.change_confidence_threshold(threshold)
+
+    return {"new_threshold": threshold}
 
 @app.on_event("startup")
 async def startup_event():
     print("\n" + "="*60)
     print("   SENATI UNIFORM DETECTOR API")
     print("="*60)
-    print("\n📍 URL: http://localhost:8000")
-    print("📖 Docs: http://localhost:8000/docs")
-    print("\n🔌 Endpoints:")
-    print("   GET  /api/health")
-    print("   GET  /api/stats")
-    print("   POST /api/detect")
-    print("   POST /api/detect/visualize")
-    print("   POST /api/analyze")
+    print(" http://localhost:8000")
+    print(" API Docs: /docs")
     print("="*60 + "\n")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    print("\n👋 API detenida\n")
+    print("\n API detenida\n")

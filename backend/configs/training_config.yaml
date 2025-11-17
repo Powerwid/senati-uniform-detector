@@ -11,7 +11,7 @@ device: cpu
 
 # Salida
 project: models/trained
-name: senati_v1
+name: senati_v2
 exist_ok: true
 
 # Opciones

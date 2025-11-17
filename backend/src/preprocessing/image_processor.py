@@ -109,19 +109,14 @@ class ImageProcessor:
         if img is None:
             raise ValueError(f"No se pudo leer la imagen: {img_path}")
         
-        # Convertir a escala de grises para análisis
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
-        # Calcular nitidez (Laplacian variance)
         laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
         
-        # Calcular brillo promedio
         brightness = np.mean(gray)
         
-        # Calcular contraste (desviación estándar)
         contrast = np.std(gray)
         
-        # Evaluación cualitativa
         sharpness_quality = "buena" if laplacian_var > 100 else "baja"
         brightness_quality = "adecuado" if 50 < brightness < 200 else "inadecuado"
         contrast_quality = "bueno" if contrast > 30 else "bajo"
@@ -137,10 +132,6 @@ class ImageProcessor:
         }
 
 
-# ==========================================
-# FUNCIONES DE UTILIDAD
-# ==========================================
-
 def batch_resize_images(
     input_dir: str,
     output_dir: str,
@@ -153,32 +144,24 @@ def batch_resize_images(
     
     processor = ImageProcessor()
     
-    # Obtener todas las imágenes
     image_files = list(input_path.glob('*.jpg')) + \
                   list(input_path.glob('*.png')) + \
                   list(input_path.glob('*.jpeg'))
     
-    print(f"📊 Redimensionando {len(image_files)} imágenes a {target_size}x{target_size}...")
+    print(f" Redimensionando {len(image_files)} imágenes a {target_size}x{target_size}...")
     
     for i, img_file in enumerate(image_files, 1):
         print(f"   [{i}/{len(image_files)}] {img_file.name}")
         
-        # Leer imagen
         img = cv2.imread(str(img_file))
         
-        # Redimensionar
         resized = processor.resize_maintain_aspect(img, target_size)
         
-        # Guardar
         output_file = output_path / img_file.name
         cv2.imwrite(str(output_file), resized)
     
     print(f"✅ Imágenes guardadas en: {output_dir}")
 
-
-# ==========================================
-# SCRIPT DE PRUEBA
-# ==========================================
 
 if __name__ == "__main__":
     print("="*60)
@@ -188,7 +171,6 @@ if __name__ == "__main__":
     
     processor = ImageProcessor()
     
-    # Buscar una imagen de test
     test_images_dir = Path("data/test/images")
     
     if test_images_dir.exists():
@@ -197,9 +179,8 @@ if __name__ == "__main__":
         if test_images:
             test_image = str(test_images[0])
             
-            print(f"🖼️  Imagen de prueba: {Path(test_image).name}\n")
+            print(f"  Imagen de prueba: {Path(test_image).name}\n")
             
-            # Test 1: Información de la imagen
             print("TEST 1: Información de la imagen")
             print("-" * 40)
             info = processor.get_image_info(test_image)
@@ -207,7 +188,6 @@ if __name__ == "__main__":
                 print(f"  {key}: {value}")
             print()
             
-            # Test 2: Análisis de calidad
             print("TEST 2: Análisis de calidad")
             print("-" * 40)
             quality = processor.check_image_quality(test_image)
@@ -215,7 +195,6 @@ if __name__ == "__main__":
                 print(f"  {key}: {value}")
             print()
             
-            # Test 3: Redimensionamiento
             print("TEST 3: Redimensionamiento")
             print("-" * 40)
             img = cv2.imread(test_image)
@@ -226,8 +205,8 @@ if __name__ == "__main__":
             print(f"  Guardada: test_resized.jpg")
             print()
             
-            print("✅ Todas las pruebas completadas")
+            print(" Todas las pruebas completadas")
         else:
-            print("⚠️  No hay imágenes en data/test/images")
+            print("  No hay imágenes en data/test/images")
     else:
-        print("⚠️  No existe la carpeta data/test/images")
+        print("  No existe la carpeta data/test/images")
